@@ -305,3 +305,5 @@ Next.js 14 (App Router) · React 18 (hooks only) · TypeScript (strict,
 `BroadcastChannel`. No backend, no state-management library, no UI
 component library — everything in `components/ui` is hand-rolled on top
 of Tailwind so the whole dependency surface stays auditable in one sitting.
+#   E M I - C a l c u l a t o r  
+ 
