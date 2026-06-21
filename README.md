@@ -7,7 +7,10 @@ hacks. Tabs talk to each other directly over the [`BroadcastChannel`
 API](https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API).
 
 Built for the Frontend Intern Assignment — EMI Calculator with Shared
-Workspace.
+Workspace. Colors, type, and the overall layout follow the brief's own
+reference screens (the design-reference pages near the end of the
+assignment PDF) — indigo accent, neutral white/near-black surfaces,
+amber for interest, blue for principal.
 
 ## Live demo / repo
 

@@ -28,7 +28,7 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors ${
-              active ? "bg-surface text-ink shadow-ledger" : "text-muted hover:text-ink"
+              active ? "bg-accent text-white shadow-ledger" : "text-muted hover:text-ink"
             }`}
           >
             {option.icon}

@@ -21,13 +21,13 @@ const config: Config = {
       },
       fontFamily: {
         display: [
-          "Iowan Old Style",
-          "Palatino Linotype",
-          "URW Palladio L",
-          "Georgia",
-          "Cambria",
-          "Times New Roman",
-          "serif",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
         ],
         sans: [
           "-apple-system",

@@ -7,10 +7,8 @@ export function TabPresence({ presence }: { presence: PresenceSnapshot }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Badge tone={presence.isLeader ? "accent" : "neutral"}>
-        {label}
-        {presence.isLeader && " · Leader"}
-      </Badge>
+      <Badge tone="neutral">{label}</Badge>
+      {presence.isLeader && <Badge tone="accent">Leader</Badge>}
       <span className="inline-flex items-center gap-1.5 text-xs text-muted">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-positive" />

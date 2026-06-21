@@ -7,10 +7,13 @@ export function Badge({
   children: ReactNode;
   tone?: "neutral" | "accent" | "positive";
 }) {
+  // Solid fills for "accent" (LEADER) and "positive" (BEST VALUE), matching
+  // the reference's filled pill treatment. "neutral" (a plain tab label)
+  // stays a quiet outlined pill so it doesn't compete with those two.
   const toneClasses = {
     neutral: "bg-raised text-muted border-line",
-    accent: "bg-accent/10 text-accent-strong border-accent/30",
-    positive: "bg-positive/10 text-positive border-positive/30",
+    accent: "border-transparent bg-accent text-white",
+    positive: "border-transparent bg-positive text-white",
   }[tone];
   return (
     <span

@@ -34,12 +34,12 @@ export function ScheduleTable({ rows, breakEvenMonth }: { rows: AmortizationRow[
               return (
                 <tr
                   key={row.month}
-                  className={`border-t border-line ${isBreakEven ? "bg-positive/10" : ""}`}
+                  className={`border-t border-line ${isBreakEven ? "bg-accent/10" : ""}`}
                 >
                   <td className="px-2 py-2 font-figures text-xs">
                     {row.month}
                     {isBreakEven && (
-                      <span className="ml-2 rounded-full bg-positive/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-positive">
+                      <span className="ml-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">
                         Break-even
                       </span>
                     )}
@@ -64,7 +64,7 @@ export function ScheduleTable({ rows, breakEvenMonth }: { rows: AmortizationRow[
           {breakEvenMonth && (
             <>
               {" "}
-              · Break-even at month <span className="font-figures font-semibold text-positive">{breakEvenMonth}</span>
+              · Break-even at month <span className="font-figures font-semibold text-accent-strong">{breakEvenMonth}</span>
             </>
           )}
         </span>
