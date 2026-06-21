@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Design system: "Ledger"
+  -----------------------
+  A paper-and-ink palette borrowed from a physical loan passbook —
+  warm neutral surfaces, a deep teal for "yours" (principal), a muted
+  rust for "the bank's" (interest), and a restrained forest green for
+  money saved. Figures are always set in a monospace face with tabular
+  numerals so a column of rupee amounts lines up the way it would in a
+  real ledger column, not like generic dashboard cards.
+*/
+
+:root {
+  --c-bg: 247 245 241;
+  --c-surface: 255 255 255;
+  --c-raised: 252 250 247;
+  --c-ink: 28 27 25;
+  --c-muted: 107 102 92;
+  --c-border: 228 224 216;
+  --c-accent: 31 95 91;
+  --c-accent-strong: 18 66 63;
+  --c-principal: 31 95 91;
+  --c-interest: 180 83 9;
+  --c-positive: 47 107 58;
+  --c-danger: 158 42 43;
+}
+
+[data-theme="dark"] {
+  --c-bg: 16 18 20;
+  --c-surface: 25 28 31;
+  --c-raised: 31 35 39;
+  --c-ink: 235 232 225;
+  --c-muted: 154 149 139;
+  --c-border: 42 47 52;
+  --c-accent: 90 209 197;
+  --c-accent-strong: 138 226 216;
+  --c-principal: 90 209 197;
+  --c-interest: 240 173 102;
+  --c-positive: 121 209 132;
+  --c-danger: 224 130 130;
+}
+
+* {
+  border-color: rgb(var(--c-border));
+}
+
+html {
+  color-scheme: light;
+}
+[data-theme="dark"] html,
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  background-color: rgb(var(--c-bg));
+  color: rgb(var(--c-ink));
+  font-feature-settings: "tnum" 1;
+}
+
+.font-figures {
+  font-family: theme("fontFamily.mono");
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Visible keyboard focus everywhere — never suppressed. */
+:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- custom range slider, themed to match the ledger system ---- */
+input[type="range"].ledger-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgb(var(--c-accent)) 0%,
+    rgb(var(--c-accent)) var(--fill, 50%),
+    rgb(var(--c-border)) var(--fill, 50%),
+    rgb(var(--c-border)) 100%
+  );
+  cursor: pointer;
+}
+input[type="range"].ledger-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgb(var(--c-surface));
+  border: 3px solid rgb(var(--c-accent));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  margin-top: 0;
+  cursor: grab;
+}
+input[type="range"].ledger-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.08);
+}
+input[type="range"].ledger-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgb(var(--c-surface));
+  border: 3px solid rgb(var(--c-accent));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  cursor: grab;
+}
+input[type="range"].ledger-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+/* Custom scrollbar for the amortization table on overflow, webkit only —
+   purely cosmetic, the table is fully usable without it. */
+.ledger-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.ledger-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-border));
+  border-radius: 999px;
+}
