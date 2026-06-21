@@ -30,7 +30,9 @@ prepayment in one tab, watch it land in the other.
 ```bash
 npm run build   # production build
 npm run start   # serve the production build
-npm run test    # runs tests/sanity-check.ts against the real reducer + finance modules
+npm run test    # tests/sanity-check.ts (reducer + finance math) and
+                # tests/live-sync-check.ts (real BroadcastChannel, two
+                # simulated tabs, no mocks)
 npm run lint    # ESLint
 ```
 
@@ -76,6 +78,37 @@ nothing here that depends on a particular platform.
   and the address bar stays in sync as you adjust the calculator
 
 ## Architecture
+
+### The reducer must be pure — this was not a theoretical concern
+
+Early on, `ADD_PREPAYMENT` and `ADD_SCENARIO` generated their new entity's
+`id` *inside* the reducer with `crypto.randomUUID()`. That looks harmless
+in isolation, and `tests/sanity-check.ts` (which only ever runs the
+reducer once per assertion) didn't catch it. It's a real bug under this
+architecture specifically: because every tab replays the *same broadcast
+action* through its own independent reducer instance, two tabs handed an
+identical `{ type: "ADD_PREPAYMENT", payload: { month, amount } }` action
+would each mint their *own* random id — so "the same" prepayment would
+exist under two different ids on two different tabs, and a later
+`REMOVE_PREPAYMENT` from one tab would silently fail to remove it on the
+other.
+
+`tests/live-sync-check.ts` exists specifically to catch this class of
+bug: it opens two real `BroadcastChannel` instances in the same process
+(Node 18+ ships the same API surface browsers do) and asserts that two
+independent reducers converge to *byte-identical* state after replaying
+the same message stream. It failed on the first run. The fix: every
+entity-creating action now carries a fully-formed entity built at the
+*dispatch call site* (`lib/scenarios.ts`, `lib/sync/ids.ts`) — the
+reducer (`context/workspaceReducer.ts`) never calls `Date.now()`,
+`Math.random()`, or `crypto.randomUUID()` itself, by rule. There's also a
+cheap, always-on version of the same check in `sanity-check.ts` that
+replays an action sequence against two fresh states and diffs the result.
+
+This is the one part of this README that isn't describing a deliberate
+design decision — it's a bug that real testing found and fixed, left in
+here because the alternative (a rewritten history implying it was always
+correct) is the more dishonest version of the same document.
 
 ### Two channels, not one
 

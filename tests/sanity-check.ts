@@ -2,6 +2,7 @@ import { workspaceReducer, createInitialState } from "../src/context/workspaceRe
 import { calculateSensitivityGrid } from "../src/lib/finance/sensitivity";
 import { generateAmortizationSchedule } from "../src/lib/finance/amortization";
 import { compareScenarios } from "../src/lib/finance/comparison";
+import { buildScenario, nextScenarioLabel } from "../src/lib/scenarios";
 import type { SharedState } from "../src/types/state";
 
 function assert(condition: boolean, message: string) {
@@ -38,14 +39,24 @@ assert(state.calculator.rate === 1, "rate clamps at LIMITS.rate.min");
 
 // --- Reducer: scenarios ---
 state = createInitialState();
-state = workspaceReducer(state, { type: "ADD_SCENARIO" });
-state = workspaceReducer(state, { type: "ADD_SCENARIO" });
-state = workspaceReducer(state, { type: "ADD_SCENARIO" });
+state = workspaceReducer(state, { type: "ADD_SCENARIO", payload: buildScenario("s1", "Scenario A", state.calculator) });
+state = workspaceReducer(state, {
+  type: "ADD_SCENARIO",
+  payload: buildScenario("s2", nextScenarioLabel(state.comparison.scenarios), state.calculator),
+});
+state = workspaceReducer(state, {
+  type: "ADD_SCENARIO",
+  payload: buildScenario("s3", nextScenarioLabel(state.comparison.scenarios), state.calculator),
+});
 assert(state.comparison.scenarios.length === 3, "can add up to 3 scenarios");
-state = workspaceReducer(state, { type: "ADD_SCENARIO" });
+state = workspaceReducer(state, {
+  type: "ADD_SCENARIO",
+  payload: buildScenario("s4", nextScenarioLabel(state.comparison.scenarios), state.calculator),
+});
 assert(state.comparison.scenarios.length === 3, "a 4th scenario is rejected (MAX_SCENARIOS)");
 
 const secondId = state.comparison.scenarios[1]!.id;
+assert(secondId === "s2", "ADD_SCENARIO uses the caller-supplied id, not one generated inside the reducer");
 state = workspaceReducer(state, {
   type: "UPDATE_SCENARIO",
   payload: { id: secondId, field: "tenure", value: 24 },
@@ -59,9 +70,13 @@ assert(state.calculator.tenure === 24, "leaving Compare mode adopts the last-edi
 
 // --- Reducer: prepayment edge cases ---
 state = createInitialState();
-state = workspaceReducer(state, { type: "ADD_PREPAYMENT", payload: { month: 12, amount: 50_000 } });
-state = workspaceReducer(state, { type: "ADD_PREPAYMENT", payload: { month: 12, amount: 25_000 } });
+state = workspaceReducer(state, { type: "ADD_PREPAYMENT", payload: { id: "p1", month: 12, amount: 50_000 } });
+state = workspaceReducer(state, { type: "ADD_PREPAYMENT", payload: { id: "p2", month: 12, amount: 25_000 } });
 assert(state.prepayment.entries.length === 2, "two prepayment entries can share a month");
+assert(
+  state.prepayment.entries[0]!.id === "p1" && state.prepayment.entries[1]!.id === "p2",
+  "ADD_PREPAYMENT uses the caller-supplied id, not one generated inside the reducer"
+);
 
 const schedule = generateAmortizationSchedule(
   state.calculator.amount,
@@ -108,6 +123,31 @@ const results = compareScenarios([
 ]);
 const winner = results.find((r) => r.isBest);
 assert(winner?.id === "a", "24-month scenario (lowest total payable) is flagged best, matching the brief's worked example");
+
+// --- Reducer purity: applying the identical action to two independent
+// states must yield byte-identical results. This is the property that
+// makes "replicate the action" sync sound; tests/live-sync-check.ts
+// proves it end-to-end over a real BroadcastChannel, this is the cheap
+// always-on version of the same guarantee. ---
+const actionsToReplay: Parameters<typeof workspaceReducer>[1][] = [
+  { type: "UPDATE_AMOUNT", payload: 32_00_000 },
+  { type: "UPDATE_RATE", payload: 14.5 },
+  { type: "UPDATE_TENURE", payload: 36 },
+  { type: "SWITCH_THEME", payload: "dark" },
+  { type: "ADD_SCENARIO", payload: { id: "fixed-1", label: "Scenario A", amount: 10_00_000, rate: 10, tenure: 36 } },
+  { type: "ADD_PREPAYMENT", payload: { id: "fixed-2", month: 5, amount: 20_000 } },
+  { type: "UNDO" },
+];
+let replicaOne: SharedState = createInitialState();
+let replicaTwo: SharedState = createInitialState();
+for (const replayedAction of actionsToReplay) {
+  replicaOne = workspaceReducer(replicaOne, replayedAction);
+  replicaTwo = workspaceReducer(replicaTwo, replayedAction);
+}
+assert(
+  JSON.stringify(replicaOne) === JSON.stringify(replicaTwo),
+  "the reducer is pure: replaying the same action sequence on two independent states converges byte-for-byte"
+);
 
 if (process.exitCode === 1) {
   console.error("\nSome checks FAILED.");

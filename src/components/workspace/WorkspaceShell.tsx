@@ -6,6 +6,8 @@ import { useUndoShortcut } from "@/hooks/useUndoShortcut";
 import { useUrlState } from "@/hooks/useUrlState";
 import { useAmortizationSchedule, useLoanTotals, useSensitivityGrid } from "@/hooks/useDerivedFinance";
 import { summarizePrepaymentImpactFromSchedules } from "@/lib/finance/prepayment";
+import { buildScenario, buildStarterScenarioPair, nextScenarioLabel } from "@/lib/scenarios";
+import { createId } from "@/lib/sync/ids";
 
 import { Header } from "@/components/workspace/Header";
 import { ThemeEffect } from "@/components/workspace/ThemeEffect";
@@ -48,6 +50,31 @@ export function WorkspaceShell() {
     if (field === "tenure") dispatch({ type: "UPDATE_TENURE", payload: value });
   }
 
+  // Id generation happens here, at the dispatch call site — never inside
+  // the reducer. The action that gets broadcast already carries the
+  // fully-formed entity, so every tab that applies it ends up with the
+  // exact same id, not a fresh random one of its own. See the comment
+  // at the top of workspaceReducer.ts for why that distinction matters.
+  function handleSetMode(mode: WorkspaceMode) {
+    if (mode === "compare" && state.comparison.scenarios.length === 0) {
+      const [first, second] = buildStarterScenarioPair(state.calculator, createId);
+      dispatch({ type: "SET_MODE", payload: mode });
+      dispatch({ type: "ADD_SCENARIO", payload: first });
+      dispatch({ type: "ADD_SCENARIO", payload: second });
+      return;
+    }
+    dispatch({ type: "SET_MODE", payload: mode });
+  }
+
+  function handleAddScenario() {
+    const scenario = buildScenario(createId(), nextScenarioLabel(state.comparison.scenarios), state.calculator);
+    dispatch({ type: "ADD_SCENARIO", payload: scenario });
+  }
+
+  function handleAddPrepayment(month: number, amount: number) {
+    dispatch({ type: "ADD_PREPAYMENT", payload: { id: createId(), month, amount } });
+  }
+
   return (
     <div className="min-h-screen bg-bg">
       <ThemeEffect theme={state.ui.theme} />
@@ -64,7 +91,7 @@ export function WorkspaceShell() {
           <SegmentedControl
             ariaLabel="Workspace mode"
             value={state.ui.mode}
-            onChange={(mode) => dispatch({ type: "SET_MODE", payload: mode })}
+            onChange={handleSetMode}
             options={MODE_OPTIONS}
           />
         </div>
@@ -94,7 +121,7 @@ export function WorkspaceShell() {
         {state.ui.mode === "compare" && (
           <ComparisonMode
             scenarios={state.comparison.scenarios}
-            onAdd={() => dispatch({ type: "ADD_SCENARIO" })}
+            onAdd={handleAddScenario}
             onRemove={(id) => dispatch({ type: "REMOVE_SCENARIO", payload: { id } })}
             onFieldChange={(id, field, value) => dispatch({ type: "UPDATE_SCENARIO", payload: { id, field, value } })}
           />
@@ -106,7 +133,7 @@ export function WorkspaceShell() {
               entries={state.prepayment.entries}
               currentTenure={state.calculator.tenure}
               impact={prepaymentImpact}
-              onAdd={(month, amount) => dispatch({ type: "ADD_PREPAYMENT", payload: { month, amount } })}
+              onAdd={handleAddPrepayment}
               onRemove={(id) => dispatch({ type: "REMOVE_PREPAYMENT", payload: { id } })}
               onClear={() => dispatch({ type: "CLEAR_PREPAYMENTS" })}
             />

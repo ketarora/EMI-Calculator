@@ -8,7 +8,6 @@ import {
 } from "@/types/state";
 import { UNDOABLE_TYPES, type WorkspaceAction } from "@/types/actions";
 import { clamp } from "@/lib/finance/format";
-import { createId } from "@/lib/sync/ids";
 
 export function createInitialState(): SharedState {
   return {
@@ -35,16 +34,19 @@ function pushHistory(state: SharedState): HistorySnapshot[] {
   return past.length > MAX_HISTORY ? past.slice(past.length - MAX_HISTORY) : past;
 }
 
-function nextScenarioLabel(existing: { label: string }[]): string {
-  const letters = ["A", "B", "C"];
-  const used = new Set(existing.map((s) => s.label));
-  for (const letter of letters) {
-    const label = `Scenario ${letter}`;
-    if (!used.has(label)) return label;
-  }
-  return `Scenario ${existing.length + 1}`;
-}
-
+/**
+ * This reducer is a pure function of (state, action) — deliberately. It
+ * is replayed independently on every tab from the *same broadcast
+ * action*, never from a shared state snapshot, so anything
+ * non-deterministic here (Date.now(), Math.random(), crypto.randomUUID())
+ * would make every tab compute a different result from "the same" edit.
+ * That's exactly the bug tests/live-sync-check.ts caught: an earlier
+ * version generated a prepayment entry's id inside this reducer, and two
+ * independent reducer instances fed the identical ADD_PREPAYMENT action
+ * minted two different ids. Every entity-creating action below therefore
+ * carries its id pre-built by the caller (see lib/sync/ids.ts and
+ * lib/scenarios.ts) — this reducer only ever appends what it's handed.
+ */
 export function workspaceReducer(state: SharedState, action: WorkspaceAction): SharedState {
   // HYDRATE_STATE replaces the document wholesale — it's the result of a
   // SYNC_INIT handshake, not a user edit, so it bypasses undo/version bump.
@@ -82,8 +84,6 @@ export function workspaceReducer(state: SharedState, action: WorkspaceAction): S
 
     case "SET_MODE": {
       let calculator = base.calculator;
-      let comparison = base.comparison;
-
       // Leaving Compare mode: the last-edited scenario's numbers follow
       // the user back into Single mode, per the brief.
       if (action.payload === "single" && base.ui.mode === "compare") {
@@ -91,47 +91,16 @@ export function workspaceReducer(state: SharedState, action: WorkspaceAction): S
         const last = base.comparison.scenarios.find((s) => s.id === lastId);
         if (last) calculator = { amount: last.amount, rate: last.rate, tenure: last.tenure };
       }
-
-      // Entering Compare mode for the first time with nothing to show yet:
-      // seed two starter scenarios off the current inputs (one shorter
-      // tenure, one longer) so the trade-off the mode is built to show is
-      // visible immediately instead of an empty state.
-      if (action.payload === "compare" && base.comparison.scenarios.length === 0) {
-        const { amount, rate, tenure } = base.calculator;
-        const shorter = {
-          id: createId(),
-          label: "Scenario A",
-          amount,
-          rate,
-          tenure: clamp(tenure - 12, LIMITS.tenure.min, LIMITS.tenure.max),
-        };
-        const longer = {
-          id: createId(),
-          label: "Scenario B",
-          amount,
-          rate,
-          tenure: clamp(tenure + 12, LIMITS.tenure.min, LIMITS.tenure.max),
-        };
-        comparison = { scenarios: [shorter, longer], lastEditedScenarioId: null };
-      }
-
-      return { ...base, calculator, comparison, ui: { ...base.ui, mode: action.payload } };
+      return { ...base, calculator, ui: { ...base.ui, mode: action.payload } };
     }
 
     case "ADD_SCENARIO": {
       if (base.comparison.scenarios.length >= MAX_SCENARIOS) return base;
-      const newScenario = {
-        id: createId(),
-        label: nextScenarioLabel(base.comparison.scenarios),
-        amount: base.calculator.amount,
-        rate: base.calculator.rate,
-        tenure: base.calculator.tenure,
-      };
       return {
         ...base,
         comparison: {
-          scenarios: [...base.comparison.scenarios, newScenario],
-          lastEditedScenarioId: newScenario.id,
+          scenarios: [...base.comparison.scenarios, action.payload],
+          lastEditedScenarioId: action.payload.id,
         },
       };
     }
@@ -153,10 +122,8 @@ export function workspaceReducer(state: SharedState, action: WorkspaceAction): S
       return { ...base, comparison: { scenarios, lastEditedScenarioId: id } };
     }
 
-    case "ADD_PREPAYMENT": {
-      const entry = { id: createId(), month: action.payload.month, amount: action.payload.amount };
-      return { ...base, prepayment: { entries: [...base.prepayment.entries, entry] } };
-    }
+    case "ADD_PREPAYMENT":
+      return { ...base, prepayment: { entries: [...base.prepayment.entries, action.payload] } };
 
     case "REMOVE_PREPAYMENT":
       return {

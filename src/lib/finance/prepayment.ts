@@ -1,5 +1,4 @@
-import { generateAmortizationSchedule, type AmortizationResult } from "./amortization";
-import type { PrepaymentEntry } from "@/types/state";
+import { type AmortizationResult } from "./amortization";
 
 export interface PrepaymentImpact {
   originalTenure: number;
@@ -10,8 +9,9 @@ export interface PrepaymentImpact {
   interestSaved: number;
 }
 
-/** Pure comparison of two already-computed schedules — no redundant work
- *  for callers (e.g. WorkspaceShell) that have both memoized already. */
+/** Pure comparison of two already-computed schedules — the app always has
+ *  both memoized already (one per AmortizationSection on screen), so this
+ *  is the only entry point; it never recomputes a schedule itself. */
 export function summarizePrepaymentImpactFromSchedules(
   base: AmortizationResult,
   withPrepayment: AmortizationResult
@@ -24,22 +24,6 @@ export function summarizePrepaymentImpactFromSchedules(
     newInterest: withPrepayment.totalInterest,
     interestSaved: Math.max(base.totalInterest - withPrepayment.totalInterest, 0),
   };
-}
-
-/**
- * Convenience wrapper for callers (tests, one-off scripts) that don't
- * already have both schedules computed. Generates both from scratch —
- * prefer `summarizePrepaymentImpactFromSchedules` in render paths.
- */
-export function summarizePrepaymentImpact(
-  amount: number,
-  rate: number,
-  tenure: number,
-  prepayments: PrepaymentEntry[]
-): PrepaymentImpact {
-  const base = generateAmortizationSchedule(amount, rate, tenure);
-  const withPrepayment = generateAmortizationSchedule(amount, rate, tenure, prepayments);
-  return summarizePrepaymentImpactFromSchedules(base, withPrepayment);
 }
 
 /** Validates a prepayment entry against the current tenure before it's added. */
